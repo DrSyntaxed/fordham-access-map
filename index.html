@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fordham Rose Hill — Accessible Routes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #f5f3ef;
+      --surface: #ffffff;
+      --border:  #ddd9d2;
+      --text:    #1a1814;
+      --muted:   #7a7570;
+      --accent:  #2563eb;
+      --green:   #16a34a;
+      --red:     #dc2626;
+      --radius:  6px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    #shell {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      grid-template-rows: 48px 1fr;
+      height: 100vh;
+    }
+
+    /* Top bar */
+    #topbar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      z-index: 10;
+    }
+    .logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+    .logo span { color: var(--accent); }
+    .tag {
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+      background: #dbeafe;
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    /* Panel */
+    #panel {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .section {
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section:last-child { border-bottom: none; }
+    .label {
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    select {
+      width: 100%;
+      padding: 9px 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a7570' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      cursor: pointer;
+    }
+    select:focus { outline: none; border-color: var(--accent); }
+    .gap { height: 8px; }
+
+    #btn-route {
+      width: 100%;
+      padding: 10px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: opacity 0.15s;
+    }
+    #btn-route:hover { opacity: 0.88; }
+    #btn-route:disabled { opacity: 0.38; cursor: not-allowed; }
+
+    #btn-clear {
+      width: 100%;
+      padding: 8px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+    #btn-clear:hover { background: var(--bg); color: var(--text); }
+
+    #status {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    #status.ok    { background: #dcfce7; color: var(--green); }
+    #status.error { background: #fee2e2; color: var(--red); }
+
+    #route-info { display: none; }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row .k { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+    .info-row .v { font-weight: 500; }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    .ld { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .ll { width: 20px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+
+    /* Map area */
+    #map-area {
+      position: relative;
+      overflow: auto;
+      background: #e8e6e0;
+    }
+
+    #map-container {
+      position: relative;
+      transform-origin: top left;
+    }
+
+    #campus-img {
+      display: block;
+      width: 1920px;
+      height: 1234px;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    #route-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1920px;
+      height: 1234px;
+      pointer-events: none;
+    }
+
+    /* Zoom controls */
+    #zoom-controls {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 20;
+    }
+    .zoom-btn {
+      width: 32px; height: 32px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+      line-height: 1;
+    }
+    .zoom-btn:hover { background: var(--bg); }
+    #zoom-label {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      text-align: center;
+      padding: 3px 0;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<div id="shell">
+
+  <header id="topbar">
+    <div class="logo">fordham<span>/</span>rose-hill</div>
+    <div class="tag">♿ accessible routing</div>
+  </header>
+
+  <aside id="panel">
+    <div class="section">
+      <div class="label">From</div>
+      <select id="sel-from"><option value="">— select location —</option></select>
+      <div class="gap"></div>
+      <div class="label">To</div>
+      <select id="sel-to"><option value="">— select destination —</option></select>
+      <button id="btn-route" disabled>Find Accessible Route</button>
+      <button id="btn-clear">Clear</button>
+      <div id="status"></div>
+    </div>
+
+    <div class="section" id="route-info">
+      <div class="label">Route Details</div>
+      <div class="info-row"><span class="k">DISTANCE</span><span class="v" id="ri-dist">—</span></div>
+      <div class="info-row"><span class="k">EST. WALK</span><span class="v" id="ri-time">—</span></div>
+      <div class="info-row"><span class="k">ACCESSIBLE</span><span class="v" style="color:var(--green)">✓ fully</span></div>
+    </div>
+
+    <div class="section">
+      <div class="label">Map Key</div>
+      <div class="legend-item"><div class="ll" style="background:var(--accent)"></div>Accessible route</div>
+      <div class="legend-item"><div class="ld" style="background:var(--green)"></div>Start point</div>
+      <div class="legend-item"><div class="ld" style="background:var(--red)"></div>End point</div>
+    </div>
+
+    <div class="section">
+      <div class="label">Note</div>
+      <p style="font-size:11px;color:var(--muted);line-height:1.6;">
+        Routes follow accessible walkways, ramps, and elevators. Stair-only paths are excluded.
+        This is a prototype — verify critical routes on-site.
+      </p>
+    </div>
+  </aside>
+
+  <div id="map-area">
+    <div id="map-container">
+      <img id="campus-img" src="campus-map.png" alt="Fordham Rose Hill Campus Map" draggable="false"/>
+      <canvas id="route-canvas" width="1920" height="1234"></canvas>
+    </div>
+
+    <div id="zoom-controls">
+      <button class="zoom-btn" id="btn-zoom-in">+</button>
+      <div id="zoom-label">60%</div>
+      <button class="zoom-btn" id="btn-zoom-out">−</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  NODE PIXEL COORDINATES (1920×1234 image space)
+//  Buildings placed at their visual center on the campus map.
+//  Waypoints trace actual visible walkways.
+// ═══════════════════════════════════════════════════════════════
+
+const LOCATIONS = [
+  { id: "keating",      name: "Keating Hall"              },
+  { id: "dealy",        name: "Dealy Hall"                },
+  { id: "walsh",        name: "Walsh Library"             },
+  { id: "freeman",      name: "Freeman Hall"              },
+  { id: "hughes",       name: "Hughes Hall"               },
+  { id: "faber",        name: "Faber Hall"                },
+  { id: "loyola",       name: "Loyola Hall"               },
+  { id: "campbell",     name: "Campbell Hall"             },
+  { id: "loschert",     name: "Loschert Hall"             },
+  { id: "lombardi",     name: "Lombardi Memorial Center"  },
+  { id: "mcshane",      name: "McShane Campus Center"     },
+  { id: "gym",          name: "Rose Hill Gymnasium"       },
+  { id: "edwards",      name: "Edwards Parade (The Quad)" },
+  { id: "larkin",       name: "Larkin Hall"               },
+  { id: "thebaud",      name: "Thebaud Hall"              },
+  { id: "finlay",       name: "Finlay Hall"               },
+  { id: "mulcahy",      name: "Mulcahy Hall"              },
+  { id: "ohare",        name: "O'Hare Hall"               },
+  { id: "admissions",   name: "Office of Admissions"      },
+  { id: "martyrs",      name: "Martyrs' Court"            },
+  { id: "alumni_s",     name: "Alumni Court South"        },
+  { id: "queens",       name: "Queen's Court"             },
+  { id: "collins",      name: "Collins Hall"              },
+  { id: "houlihan",     name: "Houlihan Park"             },
+  { id: "salice",       name: "Salice-Conley Hall"        },
+  { id: "entrance",     name: "Main Entrance (East Gate)" },
+  { id: "fordham_gate", name: "Third/Webster Ave Gate"    },
+  { id: "batgate",      name: "Bathgate Pedestrian Ent."  },
+];
+
+// px: [x, y] from top-left of the 1920×1234 image
+const NODES = {
+  // ── Buildings ──────────────────────────────────────────
+  keating:      [960,  535],
+  dealy:        [905,  585],
+  walsh:        [638,  698],
+  freeman:      [862,  672],
+  hughes:       [808,  492],
+  faber:        [618,  348],
+  loyola:       [698,  422],
+  campbell:     [438,  602],
+  loschert:     [478,  302],
+  lombardi:     [828,  248],
+  mcshane:      [878,  332],
+  gym:          [938,  362],
+  edwards:      [818,  558],
+  larkin:       [603,  762],
+  thebaud:      [752,  652],
+  finlay:       [718,  702],
+  mulcahy:      [918,  722],
+  ohare:        [1088, 622],
+  admissions:   [678,  622],
+  martyrs:      [478,  492],
+  alumni_s:     [448,  432],
+  queens:       [528,  412],
+  collins:      [678,  462],
+  houlihan:     [1018, 462],
+  salice:       [418,  542],
+  entrance:     [1058, 532],
+  fordham_gate: [378,  1002],
+  batgate:      [828,  872],
+
+  // ── Walkway waypoints ──────────────────────────────────
+  // Constitution Row (east spine, roughly y=450)
+  wp_const_w:   [778,  452],
+  wp_const_mid: [870,  452],
+  wp_const_e:   [960,  452],
+
+  // Bellarmine Road (top arc)
+  wp_bell_w:    [620,  298],
+  wp_bell_mid:  [750,  298],
+  wp_bell_e:    [880,  298],
+
+  // Edgar Allan Poeway (mid horizontal)
+  wp_edgar_w:   [478,  512],
+  wp_edgar_mid: [640,  512],
+  wp_edgar_e:   [750,  512],
+
+  // Rose Hill Manor Drive (north-south, x≈870)
+  wp_manor_n:   [870,  400],
+  wp_manor_mid: [870,  520],
+  wp_manor_s:   [870,  640],
+  wp_manor_ss:  [870,  720],
+
+  // Central quad paths
+  wp_quad_n:    [760,  540],
+  wp_quad_s:    [760,  640],
+
+  // Old Elm Road (south horizontal)
+  wp_elm_n:     [610,  640],
+  wp_elm_s:     [610,  780],
+
+  // Archer/west road
+  wp_archer_n:  [430,  650],
+  wp_archer_s:  [430,  800],
+
+  // South connections
+  wp_clavius:   [900,  792],
+  wp_east_low:  [1060, 640],
+};
+
+// ─── Edges ─────────────────────────────────────────────
+// [nodeA, nodeB, accessible, weight]
+// weight ≈ visual pixel distance (used for shortest path)
+const EDGES = [
+  // Constitution Row
+  ["wp_const_w",   "hughes",       true,  80],
+  ["wp_const_w",   "wp_edgar_e",   true,  60],
+  ["wp_const_w",   "wp_quad_n",    true,  60],
+  ["wp_const_mid", "wp_manor_n",   true,  50],
+  ["wp_const_mid", "wp_const_w",   true,  90],
+  ["wp_const_mid", "wp_const_e",   true,  90],
+  ["wp_const_e",   "keating",      true,  90],
+  ["wp_const_e",   "houlihan",     true,  60],
+  ["wp_const_e",   "gym",          true,  90],
+
+  // Bellarmine Road (top)
+  ["wp_bell_w",    "loschert",     true,  80],
+  ["wp_bell_w",    "faber",        true,  70],
+  ["wp_bell_w",    "wp_bell_mid",  true,  130],
+  ["wp_bell_mid",  "lombardi",     true,  60],
+  ["wp_bell_mid",  "wp_bell_e",    true,  130],
+  ["wp_bell_e",    "mcshane",      true,  50],
+  ["wp_bell_e",    "gym",          true,  80],
+  ["wp_bell_w",    "loyola",       true,  130],
+  ["faber",        "loyola",       true,  90],
+  ["loyola",       "wp_bell_w",    true,  80],
+
+  // Edgar Allan Poeway
+  ["wp_edgar_w",   "martyrs",      true,  30],
+  ["wp_edgar_w",   "alumni_s",     true,  60],
+  ["wp_edgar_w",   "salice",       true,  50],
+  ["wp_edgar_mid", "queens",       true,  100],
+  ["wp_edgar_mid", "collins",      true,  60],
+  ["wp_edgar_mid", "loyola",       true,  100],
+  ["wp_edgar_mid", "wp_edgar_w",   true,  160],
+  ["wp_edgar_mid", "wp_edgar_e",   true,  110],
+  ["wp_edgar_e",   "hughes",       true,  60],
+  ["wp_edgar_e",   "wp_quad_n",    true,  30],
+  ["wp_edgar_e",   "wp_const_w",   true,  60],
+
+  // Martyrs / west cluster
+  ["martyrs",      "alumni_s",     true,  60],
+  ["alumni_s",     "queens",       true,  80],
+  ["queens",       "loschert",     true,  130],
+  ["salice",       "campbell",     true,  70],
+  ["martyrs",      "wp_edgar_w",   true,  30],
+
+  // Rose Hill Manor Drive (north-south)
+  ["wp_manor_n",   "wp_const_mid", true,  50],
+  ["wp_manor_n",   "wp_bell_e",    true,  100],
+  ["wp_manor_n",   "wp_manor_mid", true,  120],
+  ["wp_manor_mid", "keating",      true,  100],
+  ["wp_manor_mid", "edwards",      true,  50],
+  ["wp_manor_mid", "wp_manor_s",   true,  120],
+  ["wp_manor_s",   "dealy",        true,  70],
+  ["wp_manor_s",   "freeman",      true,  50],
+  ["wp_manor_s",   "wp_manor_ss",  true,  80],
+  ["wp_manor_ss",  "mulcahy",      true,  50],
+  ["wp_manor_ss",  "wp_clavius",   true,  80],
+
+  // Central quad
+  ["wp_quad_n",    "hughes",       true,  60],
+  ["wp_quad_n",    "edwards",      true,  30],
+  ["wp_quad_n",    "wp_quad_s",    true,  100],
+  ["wp_quad_s",    "admissions",   true,  80],
+  ["wp_quad_s",    "thebaud",      true,  60],
+  ["wp_quad_s",    "freeman",      true,  120],
+
+  // Keating / entrance / east area
+  ["keating",      "houlihan",     true,  80],
+  ["keating",      "entrance",     true,  110],
+  ["entrance",     "ohare",        true,  80],
+  ["entrance",     "wp_east_low",  true,  80],
+  ["houlihan",     "entrance",     true,  60],
+  ["ohare",        "wp_east_low",  true,  50],
+  ["wp_east_low",  "mulcahy",      true,  160],
+  ["wp_east_low",  "wp_clavius",   true,  170],
+
+  // Old Elm Road
+  ["wp_elm_n",     "admissions",   true,  50],
+  ["wp_elm_n",     "wp_quad_s",    true,  80],
+  ["wp_elm_n",     "wp_elm_s",     true,  140],
+  ["wp_elm_s",     "larkin",       true,  30],
+  ["wp_elm_s",     "batgate",      true,  160],
+  ["wp_elm_s",     "wp_archer_n",  true,  180],
+
+  // Walsh / Finlay / Larkin cluster
+  ["walsh",        "finlay",       true,  80],
+  ["finlay",       "thebaud",      true,  80],
+  ["finlay",       "wp_elm_n",     true,  80],
+  ["larkin",       "walsh",        true,  60],
+  ["admissions",   "thebaud",      true,  80],
+
+  // South / Clavius
+  ["wp_clavius",   "mulcahy",      true,  80],
+  ["wp_clavius",   "batgate",      true,  130],
+  ["batgate",      "wp_elm_s",     true,  160],
+
+  // West / Archer
+  ["wp_archer_n",  "campbell",     true,  170],
+  ["wp_archer_n",  "salice",       true,  140],
+  ["wp_archer_s",  "wp_archer_n",  true,  150],
+  ["wp_archer_s",  "fordham_gate", true,  200],
+  ["wp_archer_s",  "wp_elm_s",     true,  150],
+  ["campbell",     "fordham_gate", true,  400],
+
+  // Faber / Loschert / north
+  ["loschert",     "faber",        true,  150],
+  ["loschert",     "queens",       true,  130],
+  ["loschert",     "wp_bell_w",    true,  80],
+  ["faber",        "wp_bell_w",    true,  70],
+  ["lombardi",     "mcshane",      true,  80],
+  ["mcshane",      "wp_manor_n",   true,  60],
+];
+
+// ═══════════════════════════════════════════════════════
+//  DIJKSTRA (accessible edges only)
+// ═══════════════════════════════════════════════════════
+function dijkstra(start, end) {
+  const adj = {};
+  Object.keys(NODES).forEach(n => adj[n] = []);
+  EDGES.forEach(([a, b, acc, w]) => {
+    if (!acc) return;
+    adj[a].push({ node: b, w });
+    adj[b].push({ node: a, w });
+  });
+
+  const dist = {};
+  const prev = {};
+  Object.keys(NODES).forEach(n => dist[n] = Infinity);
+  dist[start] = 0;
+  const visited = new Set();
+  const queue = [{ node: start, d: 0 }];
+
+  while (queue.length) {
+    queue.sort((a, b) => a.d - b.d);
+    const { node: u } = queue.shift();
+    if (visited.has(u)) continue;
+    visited.add(u);
+    if (u === end) break;
+    for (const { node: v, w } of (adj[u] || [])) {
+      const alt = dist[u] + w;
+      if (alt < dist[v]) {
+        dist[v] = alt;
+        prev[v] = u;
+        queue.push({ node: v, d: alt });
+      }
+    }
+  }
+
+  if (dist[end] === Infinity) return null;
+  const path = [];
+  let cur = end;
+  while (cur !== undefined) { path.unshift(cur); cur = prev[cur]; }
+  return { path, totalDist: dist[end] };
+}
+
+// ═══════════════════════════════════════════════════════
+//  CANVAS DRAWING
+// ═══════════════════════════════════════════════════════
+const canvas = document.getElementById('route-canvas');
+const ctx    = canvas.getContext('2d');
+
+function clearCanvas() {
+  ctx.clearRect(0, 0, 1920, 1234);
+}
+
+function drawRoute(path) {
+  clearCanvas();
+  if (!path || path.length < 2) return;
+  const pts = path.map(id => NODES[id]);
+
+  // White halo
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+  ctx.lineWidth = 10;
+  ctx.lineJoin = 'round';
+  ctx.lineCap  = 'round';
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
+  ctx.stroke();
+  ctx.restore();
+
+  // Blue route line
+  ctx.save();
+  ctx.strokeStyle = '#2563eb';
+  ctx.lineWidth   = 5;
+  ctx.lineJoin    = 'round';
+  ctx.lineCap     = 'round';
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
+  ctx.stroke();
+  ctx.restore();
+
+  // Start dot (green)
+  dot(pts[0], '#16a34a', 10);
+  // End dot (red)
+  dot(pts[pts.length - 1], '#dc2626', 10);
+}
+
+function dot(p, color, r) {
+  ctx.save();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(p[0], p[1], r + 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(p[0], p[1], r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════════════════════
+const selFrom   = document.getElementById('sel-from');
+const selTo     = document.getElementById('sel-to');
+const btnRoute  = document.getElementById('btn-route');
+const btnClear  = document.getElementById('btn-clear');
+const statusEl  = document.getElementById('status');
+const routeInfo = document.getElementById('route-info');
+
+[...LOCATIONS].sort((a,b) => a.name.localeCompare(b.name)).forEach(loc => {
+  [selFrom, selTo].forEach(sel => {
+    const o = document.createElement('option');
+    o.value = loc.id; o.textContent = loc.name;
+    sel.appendChild(o);
+  });
+});
+
+const checkReady = () => {
+  btnRoute.disabled = !(selFrom.value && selTo.value && selFrom.value !== selTo.value);
+};
+selFrom.addEventListener('change', checkReady);
+selTo.addEventListener('change', checkReady);
+
+const showStatus = (msg, type) => {
+  statusEl.textContent = msg;
+  statusEl.className = type;
+  statusEl.style.display = 'block';
+};
+
+btnClear.addEventListener('click', () => {
+  selFrom.value = ''; selTo.value = '';
+  clearCanvas();
+  statusEl.style.display = 'none';
+  routeInfo.style.display = 'none';
+  checkReady();
+});
+
+btnRoute.addEventListener('click', () => {
+  const from = selFrom.value, to = selTo.value;
+  if (!from || !to || from === to) return;
+
+  const result = dijkstra(from, to);
+  if (!result) {
+    showStatus('No accessible route found between these locations.', 'error');
+    clearCanvas();
+    routeInfo.style.display = 'none';
+    return;
+  }
+
+  drawRoute(result.path);
+
+  // Convert weight units → approximate meters
+  // Map is ~900m wide at 1920px → 1px ≈ 0.47m; weights are in ~px units
+  const meters = Math.round(result.totalDist * 0.5);
+  const mins   = Math.max(1, Math.ceil(meters / 70));
+  document.getElementById('ri-dist').textContent = `~${meters} m`;
+  document.getElementById('ri-time').textContent = `~${mins} min`;
+  routeInfo.style.display = 'block';
+
+  const named = result.path.filter(n => !n.startsWith('wp_')).length;
+  showStatus(`♿ Accessible route found — ${named} location${named !== 1 ? 's' : ''} along the way.`, 'ok');
+
+  // Scroll map to center on start
+  const sp = NODES[from];
+  const ma = document.getElementById('map-area');
+  ma.scrollTo({
+    left: sp[0] * scale - ma.clientWidth  / 2,
+    top:  sp[1] * scale - ma.clientHeight / 2,
+    behavior: 'smooth',
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+//  ZOOM
+// ═══════════════════════════════════════════════════════
+let scale = 0.6;
+const container  = document.getElementById('map-container');
+const zoomLabel  = document.getElementById('zoom-label');
+
+function applyZoom() {
+  container.style.width  = Math.round(1920 * scale) + 'px';
+  container.style.height = Math.round(1234 * scale) + 'px';
+  container.style.transform = `scale(${scale})`;
+  container.style.transformOrigin = 'top left';
+  // Keep container div sized so scroll area is correct
+  zoomLabel.textContent = Math.round(scale * 100) + '%';
+}
+
+document.getElementById('btn-zoom-in').addEventListener('click', () => {
+  scale = Math.min(2.0, parseFloat((scale + 0.15).toFixed(2)));
+  applyZoom();
+});
+document.getElementById('btn-zoom-out').addEventListener('click', () => {
+  scale = Math.max(0.3, parseFloat((scale - 0.15).toFixed(2)));
+  applyZoom();
+});
+
+applyZoom();
+</script>
+</body>
+</html>
